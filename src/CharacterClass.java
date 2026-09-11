@@ -1,5 +1,6 @@
 public enum CharacterClass {
     WARRIOR,
     MAGE,
-    ROGUE
+    ROGUE,
+    NECROMANCER // PHASE 2: Feature A
 }
