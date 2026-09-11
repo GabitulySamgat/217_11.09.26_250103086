@@ -16,6 +16,9 @@ public class Character {
     private int attacksReceivedCount;
     private int bonusArmor;
 
+    // PHASE 3: Berserker Elixir state (Feature D)
+    private int elixirTurnsRemaining;
+
     private static final Random random = new Random();
 
     public Character(String name, CharacterClass characterClass) {
@@ -24,6 +27,7 @@ public class Character {
         this.hasIceShield = false;
         this.attacksReceivedCount = 0;
         this.bonusArmor = 0;
+        this.elixirTurnsRemaining = 0;
 
         // Baseline stats hardcoded per class (naive on purpose for Phase 1)
         switch (characterClass) {
@@ -65,15 +69,26 @@ public class Character {
         return currentHP;
     }
 
+    // PHASE 3: needed so an attacker can check if their target is shielded (for backlash)
+    public boolean hasIceShield() {
+        return hasIceShield;
+    }
+
     // PHASE 2: Feature B - equip the Ice Shield (any class can call this)
     public void equipIceShield() {
         this.hasIceShield = true;
         System.out.println(name + " equips an Ice Shield.");
     }
 
+    // PHASE 3: Feature D - consume the Berserker Elixir, doubling damage for the next 2 turns
+    public void consumeBerserkerElixir() {
+        elixirTurnsRemaining = 2;
+        System.out.println(name + " consumes a Berserker Elixir! Damage doubled for the next 2 turns.");
+    }
+
     // Executes an attack against a Target (Armored Dummy / Ethereal Wisp).
     // Original Phase 1 method signature - kept working exactly as before,
-    // extended internally for the Necromancer's Phase 2 inversion.
+    // extended internally for Phase 2 (Necromancer) and Phase 3 (Elixir).
     public int attack(Target target, DamageType damageType) {
         int rawDamage = baseAttack;
 
@@ -83,6 +98,12 @@ public class Character {
                 rawDamage *= 2;
                 System.out.println("  >> CRITICAL STRIKE!");
             }
+        }
+
+        // PHASE 3: Feature D - Berserker Elixir doubles this attack's damage
+        if (elixirTurnsRemaining > 0) {
+            rawDamage *= 2;
+            System.out.println("  >> Berserker Elixir active! Damage doubled.");
         }
 
         // PHASE 2: Feature A - Necromancer inversion below 25% HP
@@ -103,6 +124,11 @@ public class Character {
                     + " | Target HP Remaining: " + target.getCurrentHP());
 
             CombatLogger.logToCsv(name, target.getName(), DamageType.PHYSICAL, finalDamage);
+
+            // PHASE 3: elixir turn is consumed even on the Necromancer's inverted attack
+            if (elixirTurnsRemaining > 0) {
+                elixirTurnsRemaining--;
+            }
             return finalDamage;
         }
 
@@ -116,6 +142,11 @@ public class Character {
 
         // PHASE 2: Feature C - emit the same event to the CSV sink too
         CombatLogger.logToCsv(name, target.getName(), damageType, finalDamage);
+
+        // PHASE 3: tick down the elixir's remaining turns
+        if (elixirTurnsRemaining > 0) {
+            elixirTurnsRemaining--;
+        }
 
         return finalDamage;
     }
@@ -147,9 +178,26 @@ public class Character {
         return finalDamage;
     }
 
-    // PHASE 2: overload so characters can attack each other (used to demo the Ice Shield)
+    // PHASE 2: overload so characters can attack each other (used to demo the Ice Shield).
+    // PHASE 3: also carries the Elixir doubling + backlash-vs-shield check.
     public int attack(Character target, DamageType damageType) {
         int rawDamage = baseAttack;
+
+        // PHASE 3: Feature D - Berserker Elixir doubling
+        if (elixirTurnsRemaining > 0) {
+            rawDamage *= 2;
+            System.out.println("  >> Berserker Elixir active! Damage doubled.");
+
+            // PHASE 3: if the target has an active shield during an elixir turn,
+            // the attacker suffers self-inflicted backlash equal to 100% of their base attack
+            if (target.hasIceShield()) {
+                int backlash = this.baseAttack;
+                this.currentHP = Math.max(this.currentHP - backlash, 0);
+                System.out.println("  >> Backlash! " + name + " takes " + backlash
+                        + " self-inflicted damage from " + target.getName() + "'s active shield.");
+            }
+        }
+
         int finalDamage = target.receiveAttack(damageType, rawDamage);
 
         System.out.println("Attacker: " + name
@@ -160,6 +208,12 @@ public class Character {
                 + " | Defender HP Remaining: " + target.getCurrentHP());
 
         CombatLogger.logToCsv(name, target.getName(), damageType, finalDamage);
+
+        // PHASE 3: tick down the elixir's remaining turns
+        if (elixirTurnsRemaining > 0) {
+            elixirTurnsRemaining--;
+        }
+
         return finalDamage;
     }
 }

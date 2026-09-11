@@ -22,14 +22,13 @@ public class CombatEngine {
             System.out.println();
         }
 
-        // ============ PHASE 2 additions ============
+        // ============ PHASE 2 (unchanged - zero regression) ============
 
         // --- Feature A: Necromancer inversion demo ---
         System.out.println("=== Feature A: Necromancer ===");
         Character necromancer = new Character("Necromancer", CharacterClass.NECROMANCER);
         Target trainingDummy = new Target("Training Dummy", TargetType.ARMORED_DUMMY, 200);
 
-        // Bring the Necromancer below 25% HP so the next attack triggers the inversion
         necromancer.receiveAttack(DamageType.PHYSICAL, 70);
         necromancer.receiveAttack(DamageType.PHYSICAL, 20);
         System.out.println("Necromancer HP after damage: " + necromancer.getCurrentHP());
@@ -47,6 +46,33 @@ public class CombatEngine {
             System.out.println("-- Elemental hit #" + i + " --");
             attackerMage.attack(shieldedWarrior, DamageType.FROST);
         }
+        System.out.println();
+
+        // ============ PHASE 3 additions ============
+
+        // --- Feature D: Berserker Elixir doubling over 2 turns, then reverting ---
+        System.out.println("=== Feature D: Berserker Elixir (doubling) ===");
+        Character berserker = new Character("Berserker", CharacterClass.WARRIOR);
+        Target berserkerDummy = new Target("Berserker Test Dummy", TargetType.ARMORED_DUMMY, 300);
+
+        berserker.consumeBerserkerElixir();
+        System.out.println("-- Turn 1 (elixir active) --");
+        berserker.attack(berserkerDummy, DamageType.PHYSICAL);
+        System.out.println("-- Turn 2 (elixir active) --");
+        berserker.attack(berserkerDummy, DamageType.PHYSICAL);
+        System.out.println("-- Turn 3 (elixir expired, back to normal) --");
+        berserker.attack(berserkerDummy, DamageType.PHYSICAL);
+        System.out.println();
+
+        // --- Feature D: Berserker Elixir backlash when target has an active shield ---
+        System.out.println("=== Feature D: Berserker Elixir Backlash vs Shield ===");
+        Character recklessAttacker = new Character("Reckless Attacker", CharacterClass.ROGUE);
+        Character shieldedDefender = new Character("Shielded Defender", CharacterClass.WARRIOR);
+        shieldedDefender.equipIceShield();
+
+        recklessAttacker.consumeBerserkerElixir();
+        recklessAttacker.attack(shieldedDefender, DamageType.PHYSICAL); // should backlash
+        System.out.println("Reckless Attacker HP after backlash: " + recklessAttacker.getCurrentHP());
         System.out.println();
 
         // --- Feature C: dump the CSV sink built up over the whole run ---
